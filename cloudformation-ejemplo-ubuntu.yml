@@ -4,7 +4,10 @@ Description: "Plantilla para crear una instancia EC2 con un grupo de seguridad b
 Parameters:
   ImageId:
     Type: String
-    Default: ami-05576a079321f21f8 # Valor por defecto de la AMI (AMI Linux)
+    Default: ami-0e2c8caa4b6378d8c # Valor por defecto de la AMI (AMI Ubuntu)
+    AllowedValues:
+      - ami-0e2c8caa4b6378d8c # AMI Ubuntu
+      - ami-05576a079321f21f8 # AMI Linux
     Description: ID de la AMI para lanzar la instancia.
 
 Resources:
