@@ -1,13 +1,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Plantilla para crear una instancia EC2 con un grupo de seguridad básico."
 
+Parameters:
+  ImageId:
+    Type: String
+    Default: ami-05576a079321f21f8 # Valor por defecto de la AMI (AMI Linux)
+    Description: ID de la AMI para lanzar la instancia.
+
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
       KeyName: 'vockey'
-      ImageId: "ami-0e2c8caa4b6378d8c"
+      ImageId: !Ref ImageId # Usa el parámetro ImageId
       SecurityGroupIds:
         - !Ref MySecurityGroup
 
