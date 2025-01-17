@@ -34,17 +34,6 @@ Resources:
         - Key: "Name"
           Value: "adma-pilaseis-public-subnet"
 
-  PrivateSubnet:
-    Type: "AWS::EC2::Subnet"
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs ]
-      CidrBlock: "14.0.1.0/24"
-      MapPublicIpOnLaunch: false
-      Tags:
-        - Key: "Name"
-          Value: "adma-pilaseis-private-subnet"
-
   EC2PublicInstance:
     Type: "AWS::EC2::Instance"
     Properties:
@@ -58,20 +47,6 @@ Resources:
       Tags:
         - Key: "Name"
           Value: "adma-pilaseis-public-ec2"
-
-  EC2PrivateInstance:
-    Type: "AWS::EC2::Instance"
-    Properties:
-      InstanceType: "t2.micro"
-      KeyName: "vockey"
-      ImageId: !Ref ImageId
-      SecurityGroupIds:
-        - !Ref MySecurityGroup
-      SubnetId: !Ref PrivateSubnet
-      PrivateIpAddress: "14.0.1.235"
-      Tags:
-        - Key: "Name"
-          Value: "adma-pilaseis-private-ec2"
 
   MySecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
@@ -103,12 +78,18 @@ Resources:
           Value: "adma-pilaseis-route-table"
       VpcId: !Ref VPC
 
-  Route:
+  DefaultPublicRoute:
     Type: "AWS::EC2::Route"
     Properties:
       RouteTableId: !Ref RouteTable
       DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+  Type: AWS::EC2::SubnetRouteTableAssociation
+  Properties:
+    RouteTableId: !Ref PublicRouteTable
+    SubnetId: !Ref PublicSubnet1
 
   InternetGateway:
     Type: "AWS::EC2::InternetGateway"
@@ -122,3 +103,15 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
+
+  NatGateway1EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: InternetGatewayAttachment
+      Properties:
+        Domain: vpc
+  
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet
