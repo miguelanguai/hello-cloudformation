@@ -1,0 +1,212 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Subred pública con EC2 y NAT Gateway. Subred Privada con EC2 conectada a NAT, en una AZ"
+
+Parameters:
+  ImageId:
+    Type: String
+    Default: "ami-04b4f1a9cf54c11d0"
+    Description: "ID de la imagen AMI para la instancia EC2. Default: Ubuntu 24.04"
+    AllowedValues:
+      - "ami-0c02fb55956c7d316" # Amazon Linux 2
+      - "ami-0d8f6eb4f641ef691" # Ubuntu Server 20.04 LTS
+      - "ami-04b4f1a9cf54c11d0" # Ubuntu Server 24.0 LTS
+      - "ami-0a91cd140a1fc148a" # Red Hat Enterprise Linux 8
+    ConstraintDescription: "Debe ser una de las AMIs permitidas: Amazon Linux 2, Ubuntu Server 20.04 LTS o Red Hat Enterprise Linux 8."
+
+Resources:
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "14.0.0.0/20"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete"
+
+  # SUBNETS
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-public-subnet"
+
+  PrivateSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.1.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-private-subnet"
+
+  # EC2
+
+  EC2PublicInstance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref MyPublicSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.10"
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-public-ec2"
+
+  EC2PrivateInstance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref MyPrivateSecurityGroup
+      SubnetId: !Ref PrivateSubnet
+      PrivateIpAddress: "14.0.1.10"
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-private-ec2"
+
+  # SECURITY GROUPS
+
+  MyPublicSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0" # Cambia esto para restringir acceso si es necesario
+        - IpProtocol: "tcp"
+          FromPort: 20
+          ToPort: 20
+          CidrIp: "0.0.0.0/0" # Cambia esto para restringir acceso si es necesario
+        - IpProtocol: "tcp"
+          FromPort: 53
+          ToPort: 53
+          CidrIp: "8.8.8.8/0" # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-sg"
+
+  MyPrivateSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0" # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-sg"
+
+  # ROUTE TABLES & associations
+
+  # PUBLIC SUBNET ROUTE TABLE
+  PublicSubnetRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-public-subnet-route-table"
+      VpcId: !Ref VPC
+
+  DefaultPublicRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicSubnetRouteTable
+
+  VpcRoutePublicSubnet:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "14.0.0.0/20"
+      RouteTableId: !Ref PublicSubnetRouteTable
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      SubnetId: !Ref PublicSubnet
+
+    # PRIVATE SUBNET ROUTE TABLE
+  PrivateSubnetRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-private-subnet-route-table"
+      VpcId: !Ref VPC
+
+  VpcRoutePrivateSubnet:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "14.0.0.0/20"
+      RouteTableId: !Ref PrivateSubnetRouteTable
+
+  NatGatewayPrivateRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGateway
+      RouteTableId: !Ref PrivateSubnetRouteTable
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateSubnetRouteTable
+      SubnetId: !Ref PrivateSubnet
+
+  # INTERNET GATEWAY & attachment to VPC
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-internet-gateway"
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: VPC
+      InternetGatewayId:
+        Ref: InternetGateway
+
+  # NAT Gateway y Elastic IP
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-internet-gateway-elastic-ip"
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      ConnectivityType: "Public"
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilasiete-nat-gateway"
