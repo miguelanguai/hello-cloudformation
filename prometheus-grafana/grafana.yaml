@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Subred pública con 3 EC2 para node-exporter, prometheus y grafana."
+
+Parameters:
+  ImageId:
+    Type: String
+    Default: "ami-04b4f1a9cf54c11d0"
+    Description: "ID de la imagen AMI para la instancia EC2. Default: Ubuntu 24.04"
+    AllowedValues:
+      - "ami-0c02fb55956c7d316" # Amazon Linux 2
+      - "ami-0d8f6eb4f641ef691" # Ubuntu Server 20.04 LTS
+      - "ami-04b4f1a9cf54c11d0" # Ubuntu Server 24.0 LTS
+      - "ami-0a91cd140a1fc148a" # Red Hat Enterprise Linux 8
+    ConstraintDescription: "Debe ser una de las AMIs permitidas: Amazon Linux 2, Ubuntu Server 20.04 LTS, Ubuntu Server 24.04 LTS o Red Hat Enterprise Linux 8."
+
+Resources:
+
+  # VPC
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "14.0.0.0/20"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana"
+
+  # SUBNET
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-subnet"
+
+  # EC2
+    # Node Exporter
+  EC2NodeExporter:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref NodeExporterSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.10"
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-node-exporter-ec2"
+      UserData:
+        Fn::Base64: !Sub |
+           #!/bin/bash
+           # Actualizar el sistema
+           apt update -y
+           apt upgrade -y
+           # Descargar la última versión de Node Exporter
+           cd /tmp
+           wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+           # Extraer los archivos
+           tar xvfz node_exporter-1.6.1.linux-amd64.tar.gz
+           sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin/
+           # Crear un usuario para Node Exporter
+           sudo useradd --no-create-home --shell /bin/false nodeusr
+           # Crear archivo de servicio para Node Exporter
+           cat <<EOF | sudo tee /etc/systemd/system/node_exporter.service
+           [Unit]
+           Description=Node Exporter
+           After=network.target
+           [Service]
+           User=nodeusr
+           ExecStart=/usr/local/bin/node_exporter
+           [Install]
+           WantedBy=default.target
+           EOF
+           # Dar permisos adecuados
+           sudo chown nodeusr:nodeusr /usr/local/bin/node_exporter
+           # Iniciar Node Exporter y habilitarlo para que se inicie automáticamente
+           sudo systemctl daemon-reload
+           sudo systemctl start node_exporter
+           sudo systemctl enable node_exporter
+           # Confirmación de que el servicio ha iniciado
+           echo "Node Exporter está corriendo y escuchando en el puerto 9100"
+            service httpd start
+            chkconfig httpd on
+
+    # Prometheus
+  EC2Prometheus:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref PrometheusSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.20"
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-prometheus-ec2"
+    # Grafana
+  EC2Grafana:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref GrafanaSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.30"
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-grafana-ec2"
+
+  # SECURITY GROUPS
+    # Node Exporter SG
+  NodeExporterSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH y puerto 9100"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0" # A todos los dispositivos
+        - IpProtocol: "tcp"
+          FromPort: 9100
+          ToPort: 9100
+          CidrIp: "0.0.0.0/0" # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-node-exporter-sg"
+
+    # Prometheus SG
+  PrometheusSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH y puerto 9090"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0" # A todos los dispositivos
+        - IpProtocol: "tcp"
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: "0.0.0.0/0" # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-prometheus-sg"
+
+    # Grafana SG
+  GrafanaSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0" # A todos los dispositivos
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0" # A todos los dispositivos
+        - IpProtocol: "tcp"
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: "0.0.0.0/0" # A todos los dispositivos
+        - IpProtocol: "tcp"
+          FromPort: 9100
+          ToPort: 9100
+          CidrIp: "0.0.0.0/0" # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-grafana-sg"
+
+  # ROUTE TABLES & associations
+
+  # PUBLIC SUBNET ROUTE TABLE
+  PublicSubnetRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-subnet-route-table"
+      VpcId: !Ref VPC
+
+  DefaultPublicRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicSubnetRouteTable
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  # INTERNET GATEWAY & attachment to VPC
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "adma-cloudformation-grafana-igw"
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: VPC
+      InternetGatewayId:
+        Ref: InternetGateway
+
