@@ -133,12 +133,8 @@ Resources:
       DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
       RouteTableId: !Ref PublicSubnetRouteTable
-
-  VpcRoutePublicSubnet:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "14.0.0.0/20"
-      RouteTableId: !Ref PublicSubnetRouteTable
+  
+  # La ruta a la VPC es creada automáticamente cuando se crea la tabla de enrutamiento, por lo que no es necesaria aqui
 
   PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -155,11 +151,7 @@ Resources:
           Value: "adma-pilasiete-private-subnet-route-table"
       VpcId: !Ref VPC
 
-  VpcRoutePrivateSubnet:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "14.0.0.0/20"
-      RouteTableId: !Ref PrivateSubnetRouteTable
+  # La ruta a la VPC es creada automáticamente cuando se crea la tabla de enrutamiento, por lo que no es necesaria aqui
 
   NatGatewayPrivateRoute:
     Type: "AWS::EC2::Route"
@@ -205,7 +197,7 @@ Resources:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt NatGateway1EIP.AllocationId
-      ConnectivityType: "Public"
+      ConnectivityType: "public"
       SubnetId: !Ref PublicSubnet
       Tags:
         - Key: "Name"
