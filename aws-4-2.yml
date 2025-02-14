@@ -1,0 +1,100 @@
+# Crear una plantilla que implemente una VPC con una subred pública y una instancia EC2. Se utilizarán Conditions para decidir si se crea la instancia, una variable “Crear Instancia” que será true or false, y Rules para validar el tipo de instancia permitido a elegir entre tres tipos de instancias. Además, se usará Fn::Join para formar el nombre del recurso como una combinación de la región el id de la instancia ec2 y tu nombre y GetAZs para obtener la zona de disponibilidad de la VPC. En la instancia EC2 crearemos etiquetas una será VPCID y se recuperará su valor usando !GetAtt.
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Plantilla para crear una instancia EC2 sin parámetros"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+Parameters:
+  ImageId:
+    Type: String
+    Default: "ami-0c02fb55956c7d316"
+    Description: "ID de la imagen AMI para la instancia EC2"
+    AllowedValues:
+      - "ami-0c02fb55956c7d316"  # Amazon Linux 2
+      - "ami-0d8f6eb4f641ef691"  # Ubuntu Server 20.04 LTS
+      - "ami-0a91cd140a1fc148a"  # Red Hat Enterprise Linux 8
+    ConstraintDescription: "Debe ser una de las AMIs permitidas: Amazon Linux 2, Ubuntu Server 20.04 LTS o Red Hat Enterprise Linux 8."
+  CrearInstancia:
+    Description: "Decidir si crear instancia"
+    Default: true
+    Type: String
+    AllowedValues:
+      - true
+      - false
+  TipoInstancia:
+    Description: "Qué tipo de instancia se requiere"
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - c5.large
+      - t3.micro
+      - t2.micro
+      - t3.nano
+      - t2.nano
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
+Conditions:
+  CondCrearInstancia: !Equals
+    - !Ref CrearInstancia
+    - true
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/rules-section-structure.html
+Rules:
+  InstanceTypeLimitedRule:
+    Assertions:
+      - Assert: !Or [!Equals [ !Ref TipoInstancia, "t3.micro"], !Equals [ !Ref TipoInstancia, "t2.micro"], !Equals [ !Ref TipoInstancia, "t3.nano"]]
+        AssertDescription: El Tipo de Instancia puede ser t3.micro, t2.micro o t3.nano
+      
+
+Resources:
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "14.0.0.0/20"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilauno"
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilauno-public-subnet"
+
+  EC2PublicInstance:
+    Type: "AWS::EC2::Instance"
+    Condition: CondCrearInstancia
+    Properties:
+      InstanceType: !Ref TipoInstancia
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.235"
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilauno-public-ec2"
+        - Key: "Name2"
+          Value: !Join [ "-", [ !GetAtt VPC.VpcId, "migue", !GetAZS  ] ]
+
+  MySecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"  # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilauno-sg"
