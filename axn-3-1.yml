@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Plantilla para crear una instancia EC2 sin parámetros"
+
+Resources:
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "14.0.0.0/20"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "axn-pilauno"
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "axn-pilauno-public-subnet"
+
+  UbuntuInstance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t3.micro"
+      KeyName: "vockey"
+      ImageId: ami-04b4f1a9cf54c11d0
+      SecurityGroupIds:
+        - !Ref ServerSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.237"
+      Tags:
+        - Key: "Name"
+          Value: "axn-pilauno-public-ec2-ubuntu"
+      UserData:
+        Fn::Base64: !Sub |
+            #!/bin/bash
+            sudo apt update -y
+            sudo apt install apache2 -y
+            echo "<h1>¡Vuelve al trabajo, gandul!</h1>" > /var/www/html/index.html
+            sudo systemctl start apache2
+
+  MicrosoftServerInstance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t3.micro"
+      KeyName: "vockey"
+      ImageId: "ami-07fa5275316057f54" # AMI Microsoft Server
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: "14.0.0.236"
+      Tags:
+        - Key: "Name"
+          Value: "axn-pilauno-public-ec2-microsoft-server"
+
+  ServerSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "icmp"
+          FromPort: 8
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: "Name"
+          Value: "axn-pilauno-server-sg"
+
+  BastionSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: "Name"
+          Value: "axn-pilauno-bastion-sg"
+
+  RouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      Tags: 
+        - Key: "Name"
+          Value: "axn-pilauno-route-table"
+      VpcId: !Ref VPC
+
+  DefaultPublicRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnet
+
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags: 
+        - Key: "Name"
+          Value: "axn-pilauno-internet-gateway"
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  DNS: 
+    Type: "AWS::Route53::HostedZone"
+    Properties: 
+      HostedZoneConfig: 
+        Comment: 'My hosted zone for example.com'
+      Name: 'marca.com'
+      VPCs: 
+        - VPCId: !Ref VPC
+          VPCRegion: !Ref AWS::Region
+      HostedZoneTags: 
+        - Key: 'Name'
+          Value: 'axn-pilauno-hostedzone'
+
+  redirectionRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Comment: Redirecciona a servidor cuando intenta entrar en Marca
+      Name: 'www.marca.com'
+      Type: CNAME
+      TTL: 900
+      ResourceRecords:
+      - !Ref serverRecord.PublicIp
+
+  serverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Comment: Redirecciona a servidor cuando intenta entrar en Marca
+      Name: 'test.marca.com'
+      Type: A
+      TTL: 300
+      ResourceRecords:
+      - !GetAtt UbuntuInstance.PrivateIp
