@@ -43,11 +43,15 @@ Resources:
             sudo apt install apache2 -y
             echo "<h1>¡Vuelve al trabajo, gandul!</h1>" > /var/www/html/index.html
             sudo systemctl start apache2
+            sudo apt install -y mod_ssl openss
+            sudo mkdir -p /etc/pki/tls/certs
+            sudo mkdir -p /etc/pki/tls/private
+            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/pki/tls/private/selfsigned.key -out /etc/pki/tls/certs/selfsigned.crt
 
   MicrosoftServerInstance:
     Type: "AWS::EC2::Instance"
     Properties:
-      InstanceType: "t3.micro"
+      InstanceType: "t3.large"
       KeyName: "vockey"
       ImageId: "ami-07fa5275316057f54" # AMI Microsoft Server
       SecurityGroupIds:
@@ -141,17 +145,6 @@ Resources:
         - Key: 'Name'
           Value: 'axn-pilauno-hostedzone'
 
-  redirectionRecord:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneId: !Ref DNS
-      Comment: Redirecciona a servidor cuando intenta entrar en Marca
-      Name: 'www.marca.com'
-      Type: CNAME
-      TTL: 900
-      ResourceRecords:
-      - !Ref serverRecord.PublicIp
-
   serverRecord:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -162,3 +155,38 @@ Resources:
       TTL: 300
       ResourceRecords:
       - !GetAtt UbuntuInstance.PrivateIp
+  
+  redirectionRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Comment: Redirecciona a servidor cuando intenta entrar en Marca
+      Name: 'www.marca.com'
+      Type: CNAME
+      TTL: 900
+      ResourceRecords:
+      - !Ref serverRecord
+
+  MyBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: magv-axn-pilauno-s3
+      Tags: 
+        - Key: "Name"
+          Value: "axn-pilauno-s3"
+
+  MyBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref MyBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - magv-axn-pilauno-s3
+                - '/*'
