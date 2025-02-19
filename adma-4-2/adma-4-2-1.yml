@@ -83,7 +83,7 @@ Resources:
         - Key: "Name"
           Value: "adma-pilauno-public-ec2"
         - Key: "Name2"
-          Value: !Join [ "-", [ !GetAtt VPC.VpcId, "migue", !GetAZS  ] ]
+          Value: !Join [ "-", [ !GetAtt VPC.VpcId, "migue", !GetAZs  ] ]
 
   MySecurityGroup:
     Type: "AWS::EC2::SecurityGroup"

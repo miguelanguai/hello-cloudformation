@@ -1,0 +1,70 @@
+# Crear un Application Load Balancer (ALB) y un Auto Scaling Group en múltiples zonas de disponibilidad. Habrá un parámetro ALBPublico que me indicará si quiero mostrarlo a Internet el balanceador, y en el esquema del LoadBalancer determinaré con ¡If si es “internet-facing” o “internal”. Los nombres de los recursos serán una combinación del nombre que se escriba por parámetro y por defecto tendrá el valor “vívalalandingzone” que lo unirás usando un Join con tu propio nombre.
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: --.--.--.--/--
+      EnableDnsSupport: true
+      Tags:
+        - Key: keyname
+          Value: value
+  
+  subnetName:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: zone-id
+      VpcId: vpc-id
+      CidrBlock: --.--.--.--/--
+      Tags:
+        - Key: keyname
+          Value: value
+
+  subnetName:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: zone-id
+      VpcId: vpc-id
+      CidrBlock: --.--.--.--/--
+      Tags:
+        - Key: keyname
+          Value: value
+
+  myELBname:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Scheme: internal
+      SecurityGroups:
+        - sg-id
+      Subnets:
+        - subnet-id
+      Instances:
+        - instance-id
+      Listeners:
+        - LoadBalancerPort: 
+          InstancePort: 
+          Protocol: HTTP|HTTPS|TCP|SSL
+          InstanceProtocol: HTTP|HTTPS|TCP|SSL
+        - LoadBalancerPort: '443'
+          InstancePort: '443'
+          Protocol: HTTPS
+          InstanceProtocol: HTTPS
+          SSLCertificateId: 
+      HealthCheck:
+        Target: TCP:port or HTTPS|HTTP:port/PathToPing
+        HealthyThreshold: 
+        Interval: 
+        Timeout: 
+        UnhealthyThreshold: 
+
+  asg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: !GetAZs ''
+      LaunchConfigurationName: 
+      MaxSize: 0
+      MinSize: 0
+      Tags:
+        - Key: keyname
+          Value: value
+          PropagateAtLaunch: True|False
