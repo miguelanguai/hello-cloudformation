@@ -43,7 +43,7 @@ Resources:
             sudo apt install apache2 -y
             echo "<h1>¡Vuelve al trabajo, gandul!</h1>" > /var/www/html/index.html
             sudo systemctl start apache2
-            sudo apt install -y mod_ssl openss
+            sudo apt install -y mod_ssl openssl
             sudo mkdir -p /etc/pki/tls/certs
             sudo mkdir -p /etc/pki/tls/private
             sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/pki/tls/private/selfsigned.key -out /etc/pki/tls/certs/selfsigned.crt
@@ -75,6 +75,14 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 443
+          ToPort: 443
           CidrIp: "0.0.0.0/0"
       Tags:
         - Key: "Name"
@@ -167,10 +175,26 @@ Resources:
       ResourceRecords:
       - !Ref serverRecord
 
+# https://docs.aws.amazon.com/general/latest/gr/s3.html#s3_website_region_endpoints
+  staticServerRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Comment: Redirecciona a página estática
+      Name: 'static.marca.com'
+      Type: A
+      TTL: 900
+      ResourceRecords:
+      - !Sub "${MyBucket}.s3-website-${AWS::Region}.amazonaws.com"
+
   MyBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: magv-axn-pilauno-s3
+      BucketName: static.marca.com
+      PublicAccessBlockConfiguration:
+        BlockPublicPolicy: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
       Tags: 
         - Key: "Name"
           Value: "axn-pilauno-s3"
@@ -185,8 +209,4 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action: 's3:GetObject'
-            Resource: !Join
-              - ''
-              - - 'arn:aws:s3:::'
-                - magv-axn-pilauno-s3
-                - '/*'
+            Resource: !Sub "arn:aws:s3:::${MyBucket}/*"

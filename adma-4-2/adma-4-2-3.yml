@@ -1,34 +1,44 @@
 # Crear un Application Load Balancer (ALB) y un Auto Scaling Group en múltiples zonas de disponibilidad. Habrá un parámetro ALBPublico que me indicará si quiero mostrarlo a Internet el balanceador, y en el esquema del LoadBalancer determinaré con ¡If si es “internet-facing” o “internal”. Los nombres de los recursos serán una combinación del nombre que se escriba por parámetro y por defecto tendrá el valor “vívalalandingzone” que lo unirás usando un Join con tu propio nombre.
 
+Parameters:
+  ALBPublico:
+    Type: String
+    Default: "yes"
+    Description: "Do you want an internet-facing load balancer?"
+    AllowedValues:
+      - "yes"
+      - "no"
+
 Resources:
   myVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: --.--.--.--/--
+      CidrBlock: 10.0.0.0/20
       EnableDnsSupport: true
+      EnableDnsHostname: true
       Tags:
-        - Key: keyname
-          Value: value
+        - Key: "Name"
+          Value: "adma-4-2-3-vpc"
   
-  subnetName:
+  Subred1:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: zone-id
+      AvailabilityZone: ""
       VpcId: vpc-id
       CidrBlock: --.--.--.--/--
       Tags:
-        - Key: keyname
-          Value: value
+        - Key: "Name"
+          Value: "adma-4-2-3-subred-1"
 
-  subnetName:
+  Subred2:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: zone-id
       VpcId: vpc-id
       CidrBlock: --.--.--.--/--
       Tags:
-        - Key: keyname
-          Value: value
+        - Key: "Name"
+          Value: "adma-4-2-3-subred-2"
 
   myELBname:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
@@ -65,6 +75,6 @@ Resources:
       MaxSize: 0
       MinSize: 0
       Tags:
-        - Key: keyname
-          Value: value
+        - Key: "Name"
+          Value: "adma-4-2-3-autoscalinggroup"
           PropagateAtLaunch: True|False
