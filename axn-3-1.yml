@@ -145,7 +145,7 @@ Resources:
     Properties: 
       HostedZoneConfig: 
         Comment: 'My hosted zone for example.com'
-      Name: 'marca.com'
+      Name: 'asdf.com'
       VPCs: 
         - VPCId: !Ref VPC
           VPCRegion: !Ref AWS::Region
@@ -157,8 +157,8 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref DNS
-      Comment: Redirecciona a servidor cuando intenta entrar en Marca
-      Name: 'test.marca.com'
+      Comment: Redirecciona a servidor cuando intenta entrar en asdf
+      Name: 'test.asdf.com'
       Type: A
       TTL: 300
       ResourceRecords:
@@ -168,8 +168,8 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref DNS
-      Comment: Redirecciona a servidor cuando intenta entrar en Marca
-      Name: 'www.marca.com'
+      Comment: Redirecciona a servidor cuando intenta entrar en asdf
+      Name: 'www.asdf.com'
       Type: CNAME
       TTL: 900
       ResourceRecords:
@@ -181,16 +181,16 @@ Resources:
     Properties:
       HostedZoneId: !Ref DNS
       Comment: Redirecciona a página estática
-      Name: 'static.marca.com'
-      Type: A
-      TTL: 900
+      Name: 'static.asdf.com'
+      Type: "CNAME"
+      TTL: 300
       ResourceRecords:
-      - !Sub "${MyBucket}.s3-website-${AWS::Region}.amazonaws.com"
+        - !Sub "${MyBucket}.s3-website-${AWS::Region}.amazonaws.com"
 
   MyBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: static.marca.com
+      BucketName: static.asdf.com
       PublicAccessBlockConfiguration:
         BlockPublicPolicy: false
       WebsiteConfiguration:
