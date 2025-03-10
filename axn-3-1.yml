@@ -39,14 +39,33 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
             #!/bin/bash
-            sudo apt update -y
-            sudo apt install apache2 -y
-            echo "<h1>¡Vuelve al trabajo, gandul!</h1>" > /var/www/html/index.html
-            sudo systemctl start apache2
-            sudo apt install -y mod_ssl openssl
+            # Actualizar sistema
+            sudo apt-get update -y
+
+            # Instalar apache (de 2 maneras distintas, para asegurar)
+            # Tambien instalar para SSL
+            sudo apt-get install apache2 -y
+            sudo apt install -y httpd mod_ssl openssl
+
+            # Generar certificados
+            #Generar un certificado SSL autofirmado
             sudo mkdir -p /etc/pki/tls/certs
             sudo mkdir -p /etc/pki/tls/private
-            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/pki/tls/private/selfsigned.key -out /etc/pki/tls/certs/selfsigned.crt
+            sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                -keyout /etc/pki/tls/private/selfsigned.key \
+                -out /etc/pki/tls/certs/selfsigned.crt
+            
+            # Modificar archivo HTML
+            echo "<h1>¡Vuelve al trabajo, gandul!</h1>" > /var/www/html/index.html
+
+            # Reiniciar y activar apache
+            sudo systemctl restart apache2
+            sudo systemctl enable apache2
+
+            # Cambiar permisos
+            chown -R www-data:www-data /var/www/
+            chmod -R 755 /var/www/
+
 
   MicrosoftServerInstance:
     Type: "AWS::EC2::Instance"
@@ -194,7 +213,7 @@ Resources:
       PublicAccessBlockConfiguration:
         BlockPublicPolicy: false
       WebsiteConfiguration:
-        IndexDocument: index.html
+        IndexDocument: "index.html"
       Tags: 
         - Key: "Name"
           Value: "axn-pilauno-s3"
