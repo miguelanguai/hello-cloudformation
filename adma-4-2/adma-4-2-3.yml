@@ -8,73 +8,187 @@ Parameters:
     AllowedValues:
       - "yes"
       - "no"
+  Nombre:
+    Type: String
+    Default: "vivalalandingzone"
+    Description: "Your name here"
+
+Conditions:
+  PublicLoadBalancer: !Equals [!Ref ALBPublico, "yes"]
 
 Resources:
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
   myVPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/20
       EnableDnsSupport: true
-      EnableDnsHostname: true
+      EnableDnsHostnames: true
       Tags:
         - Key: "Name"
-          Value: "adma-4-2-3-vpc"
-  
-  Subred1:
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-vpc"]] 
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
+  SubredPublica1:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: ""
-      VpcId: vpc-id
-      CidrBlock: --.--.--.--/--
+      AvailabilityZone: "us-east-1a"
+      VpcId: !Ref myVPC
+      CidrBlock: 10.0.0.0/24
       Tags:
         - Key: "Name"
-          Value: "adma-4-2-3-subred-1"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-subred-pub-1"]] 
 
-  Subred2:
+  SubredPublica2:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: zone-id
-      VpcId: vpc-id
-      CidrBlock: --.--.--.--/--
+      AvailabilityZone: "us-east-1b"
+      VpcId: !Ref myVPC
+      CidrBlock: 10.0.1.0/24
       Tags:
         - Key: "Name"
-          Value: "adma-4-2-3-subred-2"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-subred-pub-2"]] 
 
-  myELBname:
-    Type: AWS::ElasticLoadBalancing::LoadBalancer
+  SubredPrivada1:
+    Type: AWS::EC2::Subnet
     Properties:
-      Scheme: internal
+      AvailabilityZone: "us-east-1a"
+      VpcId: !Ref myVPC
+      CidrBlock: 10.0.2.0/24
+      Tags:
+        - Key: "Name"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-subred-priv-1"]] 
+
+  SubredPrivada2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      VpcId: !Ref myVPC
+      CidrBlock: 10.0.3.0/24
+      Tags:
+        - Key: "Name"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-subred-priv-2"]] 
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: "Name"
+        Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-igw"]]
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcgatewayattachment.html
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId:
+        Ref: InternetGateway
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html#cfn-elasticloadbalancingv2-loadbalancer-scheme
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: "Adma-4-3-2-lb"
+      Scheme: !If [PublicLoadBalancer, "internet-facing", "internal"]
       SecurityGroups:
-        - sg-id
-      Subnets:
-        - subnet-id
-      Instances:
-        - instance-id
-      Listeners:
-        - LoadBalancerPort: 
-          InstancePort: 
-          Protocol: HTTP|HTTPS|TCP|SSL
-          InstanceProtocol: HTTP|HTTPS|TCP|SSL
-        - LoadBalancerPort: '443'
-          InstancePort: '443'
-          Protocol: HTTPS
-          InstanceProtocol: HTTPS
-          SSLCertificateId: 
-      HealthCheck:
-        Target: TCP:port or HTTPS|HTTP:port/PathToPing
-        HealthyThreshold: 
-        Interval: 
-        Timeout: 
-        UnhealthyThreshold: 
+        - !Ref MySecurityGroup
+      Subnets: !If 
+        - PublicLoadBalancer
+        - [!Ref SubredPublica1, !Ref SubredPublica2]
+        - [!Ref SubredPrivada1, !Ref SubredPrivada2]
+      Tags:
+        - Key: "Name"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-alb"]]
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html#aws-resource-elasticloadbalancingv2-targetgroup--examples
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref myVPC
+      Protocol: HTTP
+      Port: 80
+      TargetType: instance
+      HealthCheckEnabled: true
+      HealthCheckPath: "/"
+      HealthCheckIntervalSeconds: 30
+      Targets:
+      - Id: !Ref EC2Instance
+
+  
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-autoscaling-autoscalinggroup.html
   asg:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AvailabilityZones: !GetAZs ''
-      LaunchConfigurationName: 
-      MaxSize: 0
-      MinSize: 0
+      AvailabilityZones: !GetAZs 'us-east-1'
+      MaxSize: 4
+      MinSize: 2
+      DesiredCapacity: 2
+      VPCZoneIdentifier:
+        - !Ref SubredPublica1
+        - !Ref SubredPublica2
+      TargetGroupARNs:
+        - !Ref TargetGroup
       Tags:
         - Key: "Name"
-          Value: "adma-4-2-3-autoscalinggroup"
-          PropagateAtLaunch: True|False
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-autoscalinggroup"]] 
+          PropagateAtLaunch: True
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t3.micro"
+      KeyName: "vockey"
+      ImageId: "ami-04b4f1a9cf54c11d0"
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref SubredPublica1
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilauno-public-ec2"
+        - Key: "Name2"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-ec2"]] 
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo apt update -y
+          sudo apt install -y apache2
+          systemctl enable apache2
+          systemctl start apache2
+          echo "<h1>¡Hola Migue!</h1>" > /var/www/html/index.html
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
+  MySecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"  # Cambia esto para restringir acceso si es necesario
+      Tags:
+        - Key: "Name"
+          Value: !Join ["-", [!Ref Nombre, "adma-4-2-3-sg"]] 
+

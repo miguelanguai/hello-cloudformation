@@ -30,6 +30,8 @@ Conditions:
     - "true"
       
 Resources:
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
   VPC:
     Type: "AWS::EC2::VPC"
     Properties:
@@ -40,6 +42,7 @@ Resources:
         - Key: "Name"
           Value: "adma-pilados"
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
   Subnet1:
     Type: "AWS::EC2::Subnet"
     Properties:
@@ -51,6 +54,7 @@ Resources:
         - Key: "Name"
           Value: "adma-pilados-public-subnet"
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Condition: AdjuntarIGW
@@ -59,6 +63,7 @@ Resources:
         - Key: "Name"
           Value: "adma-pilados-igw"
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcgatewayattachment.html
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Condition: AdjuntarIGW

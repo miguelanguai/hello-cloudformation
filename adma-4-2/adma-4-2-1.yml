@@ -47,6 +47,8 @@ Rules:
       
 
 Resources:
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
   VPC:
     Type: "AWS::EC2::VPC"
     Properties:
@@ -57,6 +59,7 @@ Resources:
         - Key: "Name"
           Value: "adma-pilauno"
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
   PublicSubnet:
     Type: "AWS::EC2::Subnet"
     Properties:
@@ -68,6 +71,7 @@ Resources:
         - Key: "Name"
           Value: "adma-pilauno-public-subnet"
 
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
   EC2PublicInstance:
     Type: "AWS::EC2::Instance"
     Condition: CondCrearInstancia
@@ -85,6 +89,7 @@ Resources:
         - Key: "Name2"
           Value: !Join [ "-", [ !GetAtt VPC.VpcId, "migue", !GetAZs  ] ]
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
   MySecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
