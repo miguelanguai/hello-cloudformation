@@ -1,0 +1,302 @@
+Parameters:
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 20.0.0.0/24
+    Description: "Cidr para la subred publica 1"
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 20.0.1.0/24
+    Description: "Cidr para la subred publica 2"
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 20.0.2.0/24
+    Description: "Cidr para la subred privada 1"
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 20.0.3.0/24
+    Description: "Cidr para la subred privada 2"
+
+Resources:
+
+# LOCAL VPC
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
+  LocalVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 20.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-vpc"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-natgateway.html
+  LocalNATGateway:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId: !GetAtt LocalNATGatewayEIP.AllocationId
+      SubnetId: !Ref SubredPublica1
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-nat"
+
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html
+  LocalNATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+        Domain: vpc
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
+  SubredPublica1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      VpcId: !Ref LocalVPC
+      CidrBlock: !Ref PublicSubnet1Cidr
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-pub-1"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-routetable.html
+  PublicSubnetwork1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: LocalVPC
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-pub-1-route-table"
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnetroutetableassociation.html
+  PublicSubnetwork1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: SubredPublica1
+      RouteTableId:
+        Ref: PublicSubnetwork1RouteTable
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-route.html
+  IgwRoutePublicSubnet1:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+       RouteTableId:
+         Ref: PublicSubnetwork1RouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: InternetGateway
+
+  
+
+  SubredPublica2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      VpcId: !Ref LocalVPC
+      CidrBlock: !Ref PublicSubnet2Cidr
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-pub-2"
+  
+  PublicSubnetwork2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: LocalVPC
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-pub-2-route-table"
+
+  PublicSubnetwork2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: SubredPublica2
+      RouteTableId:
+        Ref: PublicSubnetwork2RouteTable
+
+  IgwRoutePublicSubnet2:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+       RouteTableId:
+         Ref: PublicSubnetwork2RouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: InternetGateway
+
+  SubredPrivada1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1a"
+      VpcId: !Ref LocalVPC
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-priv-1"
+
+  PrivateSubnetwork1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: LocalVPC
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-priv-1-route-table"
+
+  PrivateSubnetwork1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: SubredPrivada1
+      RouteTableId:
+        Ref: PrivateSubnetwork1RouteTable
+
+  SubredPrivada2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: "us-east-1b"
+      VpcId: !Ref LocalVPC
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-priv-2"
+
+  PrivateSubnetwork2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: LocalVPC
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-subred-priv-1-route-table"
+
+  PrivateSubnetwork2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: SubredPrivada2
+      RouteTableId:
+        Ref: PrivateSubnetwork2RouteTable
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: "Name"
+        Value: "adma-4-3-1-igw"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcgatewayattachment.html
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: LocalVPC
+      InternetGatewayId:
+        Ref: InternetGateway
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eipassociation.html
+  EIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      InstanceId: !Ref EC2Instance
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t3.micro"
+      KeyName: "vockey"
+      ImageId: "ami-04b4f1a9cf54c11d0"
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref SubredPublica1
+      Tags:
+        - Key: "Name"
+          Value: "adma-pilauno-public-ec2"
+        - Key: "Name2"
+          Value: "adma-4-3-1-ec2"
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo apt update -y
+          sudo apt install -y apache2
+          systemctl enable apache2
+          systemctl start apache2
+          echo "<h1>¡Hola Remoto!</h1>" > /var/www/html/index.html
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
+  MySecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref LocalVPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "icmp"
+          FromPort: 8
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-sg"
+
+###########################
+  # VPC Peering
+  ###########################
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcpeeringconnection.html
+  VPCPeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      VpcId: !Ref LocalVPC 
+      PeerVpcId: "vpc-02b627691f2419bbc"
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-1-peering"
+
+  PeeringConnectionRoutePublicSubnet1:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PublicSubnetwork1RouteTable
+        DestinationCidrBlock: !Ref PublicSubnet1Cidr
+        VpcPeeringConnectionId: !Ref VPCPeeringConnection
+  
+
+  ###########################
+  # Outputs
+  ###########################
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
+Outputs:
+  LocalVPC:
+    Value: !Ref LocalVPC
+  LocalPublicSubnet1:
+    Value: !Ref SubredPublica1
+  LocalPublicSubnet2:
+    Value: !Ref SubredPublica2
+  LocalPrivateSubnet1:
+    Value: !Ref SubredPrivada1
+  LocalPrivateSubnet2:
+    Value: !Ref SubredPrivada2
+  LocalNATGateway:
+    Value: !Ref LocalNATGateway
+
