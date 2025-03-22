@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "Dev"
+    AllowedValues:
+      - Dev
+      - Prod
+    Description: "Define el ambiente."
+
+  DBUsername:
+    Type: String
+    Description: "Usuario db"
+    Default: "admin"
+
+  DBPassword:
+    Type: String
+    Description: "Contraseña db"
+    Default: "adminadmin"
+
+Mappings:
+  InstanceTypeMap:
+    Dev:
+      InstanceType: "db.t3.micro"
+    Prod:
+      InstanceType: "db.m5.large"
+
+Resources:
+
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-2-vpc"
+
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: "Grupo de seguridad para la base de datos RDS."
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: "10.0.0.0/16"
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-2-rds-sg"
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-rds-dbinstance.html
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Join ['-', [!Ref Environment, "adma-4-3-2-rds"]]
+      Engine: mysql
+      EngineVersion: "8.0.40"
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      MultiAZ: true
+      AllocatedStorage: 20
+      DBInstanceClass: !FindInMap [InstanceTypeMap, !Ref Environment, InstanceType]
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      StorageType: gp2
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      PubliclyAccessible: false
+      Tags:
+        - Key: "Environment"
+          Value: !Ref Environment
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-rds-dbsubnetgroup.html
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnet group para la base de datos RDS."
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-2-rds-subnet-group"
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.1.0/24"
+      AvailabilityZone: "us-east-1a"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-2-private-subnet-1"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.2.0/24"
+      AvailabilityZone: "us-east-1b"
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "Name"
+          Value: "adma-4-3-2-private-subnet-2"
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: "Endpoint de la base de datos RDS."
+    Value: !GetAtt RDSInstance.Endpoint.Address
