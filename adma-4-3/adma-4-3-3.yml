@@ -1,0 +1,74 @@
+Parameters:
+  BucketName:
+    Type: String
+    Description: "Nombre del bucket S3"
+    Default: "adma-4-3-3-magv"
+
+  AccessLevel:
+    Type: String
+    Description: "Nivel de acceso del bucket (Privado o Público)"
+    Default: "Private"
+    AllowedValues:
+      - "Private"
+      - "Public"
+
+Conditions:
+  IsPrivate: !Equals [ !Ref AccessLevel, "Private" ]
+  IsPublic: !Equals [ !Ref AccessLevel, "Public" ]
+
+Mappings:
+  StorageClassMap:
+    Dev:
+      StorageClass: "STANDARD"
+    Prod:
+      StorageClass: "INTELLIGENT_TIERING"
+
+Resources:
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: !If [IsPrivate, true, false]
+        BlockPublicPolicy: !If [IsPrivate, true, false]
+        RestrictPublicBuckets: !If [IsPrivate, true, false]
+      Tags:
+        - Key: "Environment"
+          Value: "Development"
+
+  PublicBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: IsPublic
+    Properties:
+      Bucket: !Ref MyS3Bucket
+      PolicyDocument:
+        Statement:
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !Sub "arn:aws:s3:::${MyS3Bucket}/*"
+              - !Sub "arn:aws:s3:::${MyS3Bucket}"
+            Condition:
+              StringEquals:
+                "aws:PrincipalType": "Anonymous"
+          - !If
+            - IsPublic
+            - Effect: Allow
+              Principal: "*"
+              Action: "s3:GetObject"
+              Resource: !Sub "arn:aws:s3:::${MyS3Bucket}/*"
+            - !Ref AWS::NoValue  # Si es privado, no se agrega esta regla
+
+  
+
+Outputs:
+  BucketArn:
+    Description: "ARN del Bucket S3"
+    Value: !GetAtt MyS3Bucket.Arn
+  
+  BucketURL:
+    Description: "URL del bucket para subir archivos"
+    Value: !Sub "https://s3.amazonaws.com/${MyS3Bucket}/"
+
+
