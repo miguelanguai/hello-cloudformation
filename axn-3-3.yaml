@@ -1,0 +1,241 @@
+Resources:
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "14.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
+  PublicSubnetA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: "us-east-1a"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-public-subnet-A"
+
+  PublicSubnetB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "14.0.1.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: "us-east-1b"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-public-subnet-B"
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-igw"
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcgatewayattachment.html
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  
+  RouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      Tags: 
+        - Key: "Name"
+          Value: "axn-3-3-route-table"
+      VpcId: !Ref VPC
+
+  DefaultPublicRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnetA
+
+# https://docs.aws.amazon.com/es_es/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
+  EC2PublicInstanceA:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: t3.micro
+      KeyName: "vockey"
+      ImageId: "ami-084568db4383264d4" # Ubuntu 24.04
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref PublicSubnetA
+      PrivateIpAddress: "14.0.0.235"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-public-ec2-a"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt update -y
+          apt install -y apache2
+          systemctl start apache2
+          systemctl enable apache2
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+              <title>¡Hola, Mundo!</title>
+              <style>
+                  body { background-color: blue; color: white; text-align: center; padding: 50px; }
+              </style>
+          </head>
+          <body>
+              <h1>¡Hola, Mundo!</h1>
+          </body>
+          </html>' > /var/www/html/index.html
+  
+  EC2PublicInstanceB:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: t3.micro
+      KeyName: "vockey"
+      ImageId: "ami-084568db4383264d4" # Ubuntu 24.04
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref PublicSubnetA
+      PrivateIpAddress: "14.0.0.234"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-public-ec2-b"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt update -y
+          apt install -y apache2
+          systemctl start apache2
+          systemctl enable apache2
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+              <title>¡Hola, Mundo!</title>
+              <style>
+                  body { background-color: green; color: white; text-align: center; padding: 50px; }
+              </style>
+          </head>
+          <body>
+              <h1>¡Hola, Mundo!</h1>
+          </body>
+          </html>' > /var/www/html/index.html
+
+  EC2PublicInstanceC:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: t3.micro
+      KeyName: "vockey"
+      ImageId: "ami-084568db4383264d4" # Ubuntu 24.04
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref PublicSubnetA
+      PrivateIpAddress: "14.0.0.233"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-public-ec2-c"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt update -y
+          apt install -y apache2
+          systemctl start apache2
+          systemctl enable apache2
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+              <title>¡Hola, Mundo!</title>
+              <style>
+                  body { background-color: red; color: white; text-align: center; padding: 50px; }
+              </style>
+          </head>
+          <body>
+              <h1>¡Hola, Mundo!</h1>
+          </body>
+          </html>' > /var/www/html/index.html
+
+  EC2PublicInstanceD:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: t3.micro
+      KeyName: "vockey"
+      ImageId: "ami-084568db4383264d4" # Ubuntu 24.04
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: !Ref PublicSubnetA
+      PrivateIpAddress: "14.0.0.232"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-public-ec2-d"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt update -y
+          apt install -y apache2
+          systemctl start apache2
+          systemctl enable apache2
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+              <title>¡Hola, Mundo!</title>
+              <style>
+                  body { background-color: purple; color: white; text-align: center; padding: 50px; }
+              </style>
+          </head>
+          <body>
+              <h1>¡Hola, Mundo!</h1>
+          </body>
+          </html>' > /var/www/html/index.html
+
+
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
+  MySecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-sg"
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html#cfn-elasticloadbalancingv2-loadbalancer-scheme
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: "Axn-3-3lb"
+      Scheme: "internet-facing"
+      SecurityGroups:
+        - !Ref MySecurityGroup
+      Subnets: 
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      Tags:
+        - Key: "Name"
+          Value: "axn-3-3-alb"
