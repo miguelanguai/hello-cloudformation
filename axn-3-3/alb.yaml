@@ -261,6 +261,29 @@ Resources:
         - Key: "Name"
           Value: "axn-3-3-alb"
 
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: false
+      Name: "Axn-3-3lb-tg"
+      TargetType: instance
+      Port: 80
+      VpcId: !Ref VPC
+      Targets:
+        - Id: !Ref EC2PublicInstanceA
+        - Id: !Ref EC2PublicInstanceB
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-route53-recordset.html
   DNSRecordEC2A:
