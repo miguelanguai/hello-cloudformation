@@ -95,15 +95,21 @@ Resources:
           echo '<!DOCTYPE html>
           <html>
           <head>
-              <title>¡Hola, Mundo!</title>
+              <title>Hola, Mundo!</title>
               <style>
                   body { background-color: blue; color: white; text-align: center; padding: 50px; }
               </style>
           </head>
           <body>
-              <h1>¡Hola, Mundo!</h1>
+              <h1>Hola, Mundo desde A</h1>
           </body>
           </html>' > /var/www/html/index.html
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html         
+  EC2AEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref EC2PublicInstanceA
   
   EC2PublicInstanceB:
     Type: "AWS::EC2::Instance"
@@ -128,15 +134,20 @@ Resources:
           echo '<!DOCTYPE html>
           <html>
           <head>
-              <title>¡Hola, Mundo!</title>
+              <title>Hola, Mundo!</title>
               <style>
                   body { background-color: green; color: white; text-align: center; padding: 50px; }
               </style>
           </head>
           <body>
-              <h1>¡Hola, Mundo!</h1>
+              <h1>Hola, Mundo desde B</h1>
           </body>
           </html>' > /var/www/html/index.html
+
+  EC2BEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref EC2PublicInstanceB
 
   EC2PublicInstanceC:
     Type: "AWS::EC2::Instance"
@@ -161,15 +172,20 @@ Resources:
           echo '<!DOCTYPE html>
           <html>
           <head>
-              <title>¡Hola, Mundo!</title>
+              <title>Hola, Mundo!</title>
               <style>
                   body { background-color: red; color: white; text-align: center; padding: 50px; }
               </style>
           </head>
           <body>
-              <h1>¡Hola, Mundo!</h1>
+              <h1>Hola, Mundo desde C</h1>
           </body>
           </html>' > /var/www/html/index.html
+
+  EC2CEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref EC2PublicInstanceC
 
   EC2PublicInstanceD:
     Type: "AWS::EC2::Instance"
@@ -194,15 +210,20 @@ Resources:
           echo '<!DOCTYPE html>
           <html>
           <head>
-              <title>¡Hola, Mundo!</title>
+              <title>Hola, Mundo!</title>
               <style>
                   body { background-color: purple; color: white; text-align: center; padding: 50px; }
               </style>
           </head>
           <body>
-              <h1>¡Hola, Mundo!</h1>
+              <h1>Hola, Mundo desde D</h1>
           </body>
           </html>' > /var/www/html/index.html
+
+  EC2DEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref EC2PublicInstanceD
 
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
@@ -239,3 +260,53 @@ Resources:
       Tags:
         - Key: "Name"
           Value: "axn-3-3-alb"
+
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-route53-recordset.html
+  DNSRecordEC2A:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
+      Name: www.miguelanguai.pro
+      ResourceRecords:
+      - !Ref EC2AEIP
+      TTL: 20
+      Type: A
+      Weight: 20
+      SetIdentifier: "ServerA"
+
+  DNSRecordEC2B:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
+      Name: www.miguelanguai.pro
+      ResourceRecords:
+      - !Ref EC2BEIP
+      TTL: 20
+      Type: A
+      Weight: 10
+      SetIdentifier: "ServerB"
+
+  DNSRecordEC2C:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
+      Name: www.miguelanguai.pro
+      ResourceRecords:
+      - !Ref EC2CEIP
+      TTL: 20
+      Type: A
+      Weight: 10
+      SetIdentifier: "ServerC"
+
+  DNSRecordEC2D:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
+      Name: www.miguelanguai.pro
+      ResourceRecords:
+      - !Ref EC2DEIP
+      TTL: 20
+      Type: A
+      Weight: 60
+      SetIdentifier: "ServerD"
