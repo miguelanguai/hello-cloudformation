@@ -9,7 +9,7 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: "Name"
-          Value: "axn-3-3"
+          Value: "axn-4-1"
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
   PublicSubnetA:
@@ -21,7 +21,7 @@ Resources:
       AvailabilityZone: "us-east-1a"
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-public-subnet-A"
+          Value: "axn-4-1-public-subnet-A"
 
   PublicSubnetB:
     Type: "AWS::EC2::Subnet"
@@ -32,7 +32,7 @@ Resources:
       AvailabilityZone: "us-east-1b"
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-public-subnet-B"
+          Value: "axn-4-1-public-subnet-B"
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
   InternetGateway:
@@ -40,7 +40,7 @@ Resources:
     Properties:
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-igw"
+          Value: "axn-4-1-igw"
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcgatewayattachment.html
   AttachGateway:
@@ -55,7 +55,7 @@ Resources:
     Properties:
       Tags: 
         - Key: "Name"
-          Value: "axn-3-3-route-table"
+          Value: "axn-4-1-route-table"
       VpcId: !Ref VPC
 
   DefaultPublicRoute:
@@ -84,7 +84,7 @@ Resources:
       PrivateIpAddress: "14.0.0.235"
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-public-ec2-a"
+          Value: "axn-4-1-public-ec2-a"
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
@@ -123,7 +123,7 @@ Resources:
       PrivateIpAddress: "14.0.0.234"
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-public-ec2-b"
+          Value: "axn-4-1-public-ec2-b"
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe
@@ -149,82 +149,6 @@ Resources:
     Properties:
       InstanceId: !Ref EC2PublicInstanceB
 
-  EC2PublicInstanceC:
-    Type: "AWS::EC2::Instance"
-    Properties:
-      InstanceType: t3.micro
-      KeyName: "vockey"
-      ImageId: "ami-084568db4383264d4" # Ubuntu 24.04
-      SecurityGroupIds:
-        - !Ref MySecurityGroup
-      SubnetId: !Ref PublicSubnetA
-      PrivateIpAddress: "14.0.0.233"
-      Tags:
-        - Key: "Name"
-          Value: "axn-3-3-public-ec2-c"
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          apt update -y
-          apt install -y apache2
-          systemctl start apache2
-          systemctl enable apache2
-          echo '<!DOCTYPE html>
-          <html>
-          <head>
-              <title>Hola, Mundo!</title>
-              <style>
-                  body { background-color: red; color: white; text-align: center; padding: 50px; }
-              </style>
-          </head>
-          <body>
-              <h1>Hola, Mundo desde C</h1>
-          </body>
-          </html>' > /var/www/html/index.html
-
-  EC2CEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      InstanceId: !Ref EC2PublicInstanceC
-
-  EC2PublicInstanceD:
-    Type: "AWS::EC2::Instance"
-    Properties:
-      InstanceType: t3.micro
-      KeyName: "vockey"
-      ImageId: "ami-084568db4383264d4" # Ubuntu 24.04
-      SecurityGroupIds:
-        - !Ref MySecurityGroup
-      SubnetId: !Ref PublicSubnetA
-      PrivateIpAddress: "14.0.0.232"
-      Tags:
-        - Key: "Name"
-          Value: "axn-3-3-public-ec2-d"
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          apt update -y
-          apt install -y apache2
-          systemctl start apache2
-          systemctl enable apache2
-          echo '<!DOCTYPE html>
-          <html>
-          <head>
-              <title>Hola, Mundo!</title>
-              <style>
-                  body { background-color: purple; color: white; text-align: center; padding: 50px; }
-              </style>
-          </head>
-          <body>
-              <h1>Hola, Mundo desde D</h1>
-          </body>
-          </html>' > /var/www/html/index.html
-
-  EC2DEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      InstanceId: !Ref EC2PublicInstanceD
-
 
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-securitygroup.html
   MySecurityGroup:
@@ -243,14 +167,14 @@ Resources:
           CidrIp: "0.0.0.0/0"
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-sg"
+          Value: "axn-4-1-sg"
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html#cfn-elasticloadbalancingv2-loadbalancer-scheme
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: "Axn-3-3lb"
+      Name: "Axn-4-1lb"
       Scheme: "internet-facing"
       SecurityGroups:
         - !Ref MySecurityGroup
@@ -259,17 +183,20 @@ Resources:
         - !Ref PublicSubnetB
       Tags:
         - Key: "Name"
-          Value: "axn-3-3-alb"
+          Value: "axn-4-1-alb"
 
   # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckEnabled: false
-      Name: "Axn-3-3lb-tg"
+      Name: "Axn-4-1lb-tg"
       TargetType: instance
+      Protocol: HTTP
       Port: 80
       VpcId: !Ref VPC
+      HealthCheckEnabled: true
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
       Targets:
         - Id: !Ref EC2PublicInstanceA
         - Id: !Ref EC2PublicInstanceB
@@ -283,53 +210,3 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref ALBTargetGroup
-
-
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-route53-recordset.html
-  DNSRecordEC2A:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
-      Name: www.miguelanguai.pro
-      ResourceRecords:
-      - !Ref EC2AEIP
-      TTL: 20
-      Type: A
-      Weight: 20
-      SetIdentifier: "ServerA"
-
-  DNSRecordEC2B:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
-      Name: www.miguelanguai.pro
-      ResourceRecords:
-      - !Ref EC2BEIP
-      TTL: 20
-      Type: A
-      Weight: 10
-      SetIdentifier: "ServerB"
-
-  DNSRecordEC2C:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
-      Name: www.miguelanguai.pro
-      ResourceRecords:
-      - !Ref EC2CEIP
-      TTL: 20
-      Type: A
-      Weight: 10
-      SetIdentifier: "ServerC"
-
-  DNSRecordEC2D:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneId : Z07212872XBN2A73TJ49U # el ID de la Hosted Zone que ya tengo creada.
-      Name: www.miguelanguai.pro
-      ResourceRecords:
-      - !Ref EC2DEIP
-      TTL: 20
-      Type: A
-      Weight: 60
-      SetIdentifier: "ServerD"
